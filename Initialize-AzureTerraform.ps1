@@ -5,7 +5,8 @@ param(
     [parameter(mandatory=$true)] [string] $Deployment,
     [ValidateLength(1,3)]
     [parameter(mandatory=$true)] [string] $DeploymentAlias,
-    [parameter(mandatory=$true)] [string] $SubscriptionId
+    [parameter(mandatory=$true)] [string] $SubscriptionId,
+    [parameter(mandatory=$false)] [string[]] $AdminGroupMembers
 )
 
 #region Check Azure login
@@ -42,6 +43,23 @@ try {
 }
 Write-Host "[SUCCESS]" -ForegroundColor 'Green'
 # endregion Create Terraform Admin group
+
+# region Add Users to Group
+if($AdminGroupMembers){
+    Write-Host -Message "Adding users to the Terraform Admins Azure AD Group [$adminGroupName]:"
+    try {
+        foreach ($member in $AdminGroupMembers) {
+            Add-AzADGroupMember -TargetGroupObjectId $terraformAdminsGroup.Id -MemberUserPrincipalName $member -ErrorAction Stop
+            Write-Host "Added [$member] to [$adminGroupName]"
+        }
+    } catch {
+        Write-Host "[ERROR]" -ForegroundColor 'Red'
+        throw $_
+    }
+    Write-Host "[SUCCESS]" -ForegroundColor 'Green'
+}
+# endregion Add Users to Group
+
 
 # region Terraform Azure Resource Group.
 $terraformManagementResourceGroupName = "$Deployment-terraform-management"
